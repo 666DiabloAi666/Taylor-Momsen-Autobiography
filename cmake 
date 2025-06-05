@@ -1,0 +1,179 @@
+
+
+---
+
+📁 Project Structure
+
+Taylor-Momsen-Autobiography/
+├── CMakeLists.txt
+├── Makefile
+├── checker/
+│   ├── __init__.py
+│   ├── core.py
+│   └── run.py
+├── resources/
+│   └── expected_sections.txt
+├── main.py
+└── README.md
+
+
+---
+
+✅ Python Code
+
+resources/expected_sections.txt
+
+Introduction
+Early Life
+Career
+Challenges
+Achievements
+Personal Philosophy
+Legacy
+Conclusion
+
+
+---
+
+checker/core.py
+
+import os
+import re
+import markdown
+from bs4 import BeautifulSoup
+
+def find_markdown_files(root='.'):
+    return [os.path.join(dp, f) for dp, dn, filenames in os.walk(root)
+            for f in filenames if f.endswith('.md') or f.endswith('.markdown')]
+
+def extract_headings(md_text):
+    return re.findall(r'^\s*#+\s+(.*)', md_text, re.MULTILINE)
+
+def check_section_coverage(headings, expected_sections):
+    return [sec for sec in expected_sections if not any(sec.lower() in h.lower() for h in headings)]
+
+def check_broken_links(md_text):
+    soup = BeautifulSoup(markdown.markdown(md_text), "html.parser")
+    broken = []
+    for tag in soup.find_all(['img', 'a']):
+        attr = 'href' if tag.name == 'a' else 'src'
+        path = tag.get(attr)
+        if path and not path.startswith("http") and not os.path.exists(path):
+            broken.append(path)
+    return broken
+
+
+---
+
+checker/run.py
+
+import os
+from checker.core import (
+    find_markdown_files, extract_headings,
+    check_section_coverage, check_broken_links
+)
+
+def load_expected_sections(file_path='resources/expected_sections.txt'):
+    with open(file_path, 'r', encoding='utf-8') as f:
+        return [line.strip() for line in f if line.strip()]
+
+def run_check():
+    expected = load_expected_sections()
+    md_files = find_markdown_files()
+    if not md_files:
+        print("❌ No Markdown files found.")
+        return
+
+    all_headings = []
+    all_broken_links = []
+
+    for md_file in md_files:
+        with open(md_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+            headings = extract_headings(content)
+            all_headings.extend(headings)
+            broken_links = check_broken_links(content)
+            if broken_links:
+                print(f"🔗 Broken links in {md_file}: {broken_links}")
+                all_broken_links.extend(broken_links)
+
+    missing_sections = check_section_coverage(all_headings, expected)
+    if missing_sections:
+        print(f"📌 Missing sections: {missing_sections}")
+    else:
+        print("✅ All expected sections are present.")
+
+    if not all_broken_links:
+        print("✅ No broken links found.")
+
+
+---
+
+main.py
+
+from checker.run import run_check
+
+if __name__ == "__main__":
+    run_check()
+
+
+---
+
+⚙️ CMake Support
+
+CMakeLists.txt
+
+cmake_minimum_required(VERSION 3.10)
+project(AutobiographyChecker)
+
+# Make sure Python is found
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+
+add_custom_target(run_checker
+    COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/main.py
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Running the Taylor Momsen Autobiography Checker..."
+)
+
+
+---
+
+⚙️ Makefile Support
+
+Makefile
+
+.PHONY: run clean
+
+run:
+	python3 main.py
+
+clean:
+	find . -type f -name "*.pyc" -delete
+
+
+---
+
+🧪 Usage
+
+Option 1: Python
+
+python3 main.py
+
+
+---
+
+Option 2: CMake
+
+mkdir build && cd build
+cmake ..
+make run_checker
+
+
+---
+
+Option 3: Makefile
+
+make run
+
+
+---
