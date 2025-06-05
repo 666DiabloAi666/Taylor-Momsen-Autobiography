@@ -1,0 +1,90 @@
+
+
+---
+
+✅ Python Code: autobiography_checker.py
+
+import os
+import re
+import markdown
+from bs4 import BeautifulSoup
+
+EXPECTED_SECTIONS = [
+    "Introduction", "Early Life", "Career", "Challenges",
+    "Achievements", "Personal Philosophy", "Legacy", "Conclusion"
+]
+
+def find_markdown_files(root='.'):
+    return [os.path.join(dp, f) for dp, dn, filenames in os.walk(root)
+            for f in filenames if f.endswith('.md') or f.endswith('.markdown')]
+
+def extract_headings(md_text):
+    return re.findall(r'^\s*#+\s+(.*)', md_text, re.MULTILINE)
+
+def check_section_coverage(headings):
+    missing = [sec for sec in EXPECTED_SECTIONS if not any(sec.lower() in h.lower() for h in headings)]
+    return missing
+
+def check_broken_links(md_text):
+    soup = BeautifulSoup(markdown.markdown(md_text), "html.parser")
+    broken = []
+    for tag in soup.find_all(['img', 'a']):
+        attr = 'href' if tag.name == 'a' else 'src'
+        path = tag.get(attr)
+        if path and not path.startswith("http") and not os.path.exists(path):
+            broken.append(path)
+    return broken
+
+def run_check():
+    md_files = find_markdown_files()
+    if not md_files:
+        print("❌ No Markdown files found.")
+        return
+
+    all_headings = []
+    all_broken_links = []
+
+    for md_file in md_files:
+        with open(md_file, 'r', encoding='utf-8') as f:
+            content = f.read()
+            headings = extract_headings(content)
+            all_headings.extend(headings)
+            broken_links = check_broken_links(content)
+            if broken_links:
+                print(f"🔗 Broken links in {md_file}: {broken_links}")
+                all_broken_links.extend(broken_links)
+
+    missing_sections = check_section_coverage(all_headings)
+    if missing_sections:
+        print(f"📌 Missing sections: {missing_sections}")
+    else:
+        print("✅ All expected sections are present.")
+
+    if not all_broken_links:
+        print("✅ No broken links found.")
+
+if __name__ == "__main__":
+    run_check()
+
+
+---
+
+🛠 Instructions:
+
+1. Clone your repo:
+
+git clone https://github.com/666DiabloAi666/Taylor-Momsen-Autobiography
+cd Taylor-Momsen-Autobiography
+
+
+2. Save the script as autobiography_checker.py inside the root of the repo.
+
+
+3. Run it:
+
+python3 autobiography_checker.py
+
+
+
+
+---
